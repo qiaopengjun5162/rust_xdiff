@@ -5,6 +5,8 @@ use std::collections::HashMap;
 use tokio::fs;
 use url::Url;
 
+use crate::ExtraArgs;
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DiffConfig {
     #[serde(flatten)]
@@ -43,10 +45,9 @@ pub struct ResponseProfile {
     pub skip_body: Vec<String>,
 }
 
-pub struct DiffArgs {}
-
 impl DiffConfig {
     pub async fn load_yaml(path: &str) -> Result<Self> {
+        // todo: 如果文件不存在
         let content = fs::read_to_string(path).await?;
         Self::from_yaml(&content)
     }
@@ -61,7 +62,7 @@ impl DiffConfig {
 }
 
 impl DiffProfile {
-    pub async fn diff(&self, _args: DiffArgs) -> Result<String> {
+    pub async fn diff(&self, args: ExtraArgs) -> Result<String> {
         // let res1 = req1.send(&args).await?;
         // let res2 = req2.send(&args).await?;
 
@@ -70,6 +71,8 @@ impl DiffProfile {
 
         // text_diff(&text1, &text2)
 
-        todo!()
+        println!("profile: {:?}\n", self);
+        println!("args: {:?}", args);
+        Ok("".to_string())
     }
 }
