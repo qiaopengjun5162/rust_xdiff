@@ -12,6 +12,14 @@ todo:
   res:
     skip_headers:
       - report-to
+      - date
+      - x-ratelimit-remaining
+      - x-ratelimit-reset
+      - cf-cache-status
+      - cf-ray
+      - age
+    skip_body:
+      - id
 rust:
   req1:
     method: GET

@@ -4,6 +4,7 @@ use rust_xdiff::{
     cli::{Action, Args, RunArgs},
     DiffConfig,
 };
+use std::io::Write;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -33,7 +34,11 @@ async fn run(args: RunArgs) -> Result<()> {
     })?;
 
     let extra_args = args.extra_params.into();
-    profile.diff(extra_args).await?;
+    let output = profile.diff(extra_args).await?;
+
+    let stdout = std::io::stdout();
+    let mut stdout = stdout.lock();
+    write!(stdout, "{}", output)?;
 
     Ok(())
 }
