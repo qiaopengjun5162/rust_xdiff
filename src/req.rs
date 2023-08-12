@@ -50,6 +50,30 @@ impl RequestProfile {
         Ok(ResponseExt(res))
     }
 
+    pub(crate) fn validate(&self) -> Result<()> {
+        if let Some(params) = self.params.as_ref() {
+            if !params.is_object() {
+                // return Err(anyhow::anyhow!("params {:?} must be an object", params));
+                return Err(anyhow::anyhow!(
+                    // "loading config error: params must be an object.\n{}",
+                    "Params must be an object but got\n{}",
+                    serde_yaml::to_string(params)?
+                ));
+            }
+        }
+
+        if let Some(body) = self.body.as_ref() {
+            if !body.is_object() {
+                return Err(anyhow::anyhow!(
+                    "Body must be an object but got\n{}",
+                    serde_yaml::to_string(body)?
+                ));
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn generate(&self, args: &ExtraArgs) -> Result<(HeaderMap, serde_json::Value, String)> {
         let mut headers = self.headers.clone();
         let mut query = self.params.clone().unwrap_or_else(|| json!({}));
@@ -109,7 +133,8 @@ impl ResponseExt {
         let res = self.0;
         let mut output = get_header_text(&res, &profile.skip_headers)?;
 
-        let content_type = get_content_type(&res.headers());
+        // let content_type = get_content_type(&res.headers());
+        let content_type = get_content_type(res.headers());
         // let text = self.0.text().await?;
         let text = res.text().await?;
 
@@ -123,7 +148,6 @@ impl ResponseExt {
                 // writeln!(&mut output, "{}", text)?;
             }
         }
-        println!("output: \n{}\n", output);
 
         Ok(output)
     }
@@ -145,15 +169,23 @@ fn get_header_text(res: &Response, skip_headers: &[String]) -> Result<String> {
 
 fn filter_json(text: &str, skip: &[String]) -> Result<String> {
     let mut json: serde_json::Value = serde_json::from_str(text)?;
-    match json {
-        serde_json::Value::Object(ref mut obj) => {
-            for k in skip {
-                obj.remove(k);
-            }
-        }
-        _ => {
-            // For now we just ignore non-object values, we don't know how to filter.
-            // In future, we might array of objects
+    // match json {
+    //     serde_json::Value::Object(ref mut obj) => {
+    //         for k in skip {
+    //             obj.remove(k);
+    //         }
+    //     }
+    //     _ => {
+    //         // For now we just ignore non-object values, we don't know how to filter.
+    //         // In future, we might array of objects
+    //     }
+    // }
+
+    // For now we just igonre non-object values, we don't know how to filter.
+    // In future, we might support array of objects
+    if let serde_json::Value::Object(ref mut obj) = json {
+        for k in skip {
+            obj.remove(k);
         }
     }
     Ok(serde_json::to_string_pretty(&json)?)
@@ -162,7 +194,8 @@ fn filter_json(text: &str, skip: &[String]) -> Result<String> {
 fn get_content_type(headers: &HeaderMap) -> Option<String> {
     headers
         .get(header::CONTENT_TYPE)
-        .map(|v| v.to_str().unwrap().split(';').next())
-        .flatten()
-        .map(|v| v.to_string())
+        // .map(|v| v.to_str().unwrap().split(';').next())
+        // .flatten()
+        // .map(|v| v.to_string())
+        .and_then(|v| v.to_str().unwrap().split(';').next().map(|v| v.to_string()))
 }

@@ -12,7 +12,6 @@ async fn main() -> Result<()> {
     // Args { action: Run(RunArgs { profile: "rust",
     // extra_params: [KeyVal { key_type: Query, key: "a", value: "100" }],
     // config: Some("fixtures/test.yml") }) }
-    println!("{:?}\n", args);
 
     match args.action {
         Action::Run(args) => run(args).await?,
