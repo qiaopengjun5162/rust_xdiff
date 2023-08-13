@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tokio::fs;
 
-use crate::{utils::diff_text, ExtraArgs, RequestProfile};
+use crate::{diff_text, ExtraArgs, RequestProfile};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DiffConfig {

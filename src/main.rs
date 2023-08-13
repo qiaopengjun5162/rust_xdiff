@@ -3,7 +3,7 @@ use clap::Parser;
 use dialoguer::{theme::ColorfulTheme, Input, MultiSelect};
 use rust_xdiff::{
     cli::{Action, Args, RunArgs},
-    DiffConfig, DiffProfile, ExtraArgs, RequestProfile, ResponseProfile,
+    highligh_text, DiffConfig, DiffProfile, ExtraArgs, RequestProfile, ResponseProfile,
 };
 use std::io::Write;
 
@@ -37,14 +37,6 @@ async fn parse() -> Result<()> {
         .with_prompt("Profile")
         .interact_text()?;
     let res = req1.send(&ExtraArgs::default()).await?;
-    // let headers = [
-    //     "report-to",
-    //     "date",
-    //     "x-ratelimit-remaining",
-    //     "x-ratelimit-reset",
-    //     "cf-ray",
-    //     "age",
-    // ];
 
     let headers = res.get_header_keys();
     let chosen = MultiSelect::with_theme(&theme)
@@ -61,7 +53,7 @@ async fn parse() -> Result<()> {
 
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
-    write!(stdout, "----\n{}", result)?;
+    write!(stdout, "----\n{}", highligh_text(&result, "yaml")?)?;
     Ok(())
 }
 
