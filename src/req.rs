@@ -16,7 +16,7 @@ pub struct RequestProfile {
     #[serde(with = "http_serde::method", default)]
     pub method: Method,
     pub url: Url,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
+    #[serde(skip_serializing_if = "empty_json_value", default)]
     pub params: Option<serde_json::Value>,
     #[serde(
         skip_serializing_if = "HeaderMap::is_empty",
@@ -24,14 +24,57 @@ pub struct RequestProfile {
         default
     )]
     pub headers: HeaderMap,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
+    #[serde(skip_serializing_if = "empty_json_value", default)]
     pub body: Option<serde_json::Value>,
+}
+
+fn empty_json_value(v: &Option<serde_json::Value>) -> bool {
+    v.as_ref().map_or(true, |v| {
+        v.is_null() || (v.is_object() && v.as_object().unwrap().is_empty())
+    })
+}
+
+impl FromStr for RequestProfile {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        let mut url = Url::parse(s)?;
+        let qs = url.query_pairs();
+        let mut params = json!({});
+        for (k, v) in qs {
+            params[&*k] = v.parse()?;
+        }
+        url.set_query(None);
+        Ok(RequestProfile::new(
+            Method::GET,
+            url,
+            Some(params),
+            HeaderMap::new(),
+            None,
+        ))
+    }
 }
 
 #[derive(Debug)]
 pub struct ResponseExt(Response);
 
 impl RequestProfile {
+    pub fn new(
+        method: Method,
+        url: Url,
+        params: Option<serde_json::Value>,
+        headers: HeaderMap,
+        body: Option<serde_json::Value>,
+    ) -> Self {
+        Self {
+            method,
+            url,
+            params,
+            headers,
+            body,
+        }
+    }
+
     pub async fn send(&self, args: &ExtraArgs) -> Result<ResponseExt> {
         // let mut req = Client::new().request(self.method.clone(), self.url.clone());
 
@@ -120,16 +163,6 @@ impl RequestProfile {
 
 impl ResponseExt {
     pub async fn get_text(self, profile: &ResponseProfile) -> Result<String> {
-        // let mut output = String::new();
-        // output.push_str(&format!("{:?} {}\n", self.0.version(), self.0.status()));
-        // let headers = self.0.headers();
-        // for (k, v) in headers.iter() {
-        //     if !profile.skip_headers.iter().any(|sh| sh == k.as_str()) {
-        //         output.push_str(&format!("{}: {:?}\n", k, v));
-        //     }
-        // }
-        // output.push_str("\n");
-
         let res = self.0;
         let mut output = get_header_text(&res, &profile.skip_headers)?;
 
@@ -150,6 +183,15 @@ impl ResponseExt {
         }
 
         Ok(output)
+    }
+
+    pub fn get_header_keys(&self) -> Vec<String> {
+        let res = &self.0;
+        let headers = res.headers();
+        headers
+            .iter()
+            .map(|(k, _)| k.as_str().to_string())
+            .collect()
     }
 }
 
