@@ -1,9 +1,11 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use tokio::fs;
+// use tokio::fs;
 
 use crate::{diff_text, ExtraArgs, RequestProfile};
+
+use super::{is_default, LoadConfig, ValidateConfig};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DiffConfig {
@@ -19,9 +21,9 @@ pub struct DiffProfile {
     pub res: ResponseProfile,
 }
 
-fn is_default<T: Default + PartialEq>(v: &T) -> bool {
-    v == &T::default()
-}
+// fn is_default<T: Default + PartialEq>(v: &T) -> bool {
+//     v == &T::default()
+// }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq, Eq)]
 pub struct ResponseProfile {
@@ -40,35 +42,37 @@ impl ResponseProfile {
     }
 }
 
+impl LoadConfig for DiffConfig {}
+
 impl DiffConfig {
     pub fn new(profiles: HashMap<String, DiffProfile>) -> Self {
         Self { profiles }
     }
 
-    pub async fn load_yaml(path: &str) -> Result<Self> {
-        // todo: 如果文件不存在
-        let content = fs::read_to_string(path).await?;
-        Self::from_yaml(&content)
-    }
+    // pub async fn load_yaml(path: &str) -> Result<Self> {
+    //     // todo: 如果文件不存在
+    //     let content = fs::read_to_string(path).await?;
+    //     Self::from_yaml(&content)
+    // }
 
-    pub fn from_yaml(content: &str) -> Result<Self> {
-        let config: Self = serde_yaml::from_str(content)?;
-        config.validate()?;
-        Ok(config)
-    }
+    // pub fn from_yaml(content: &str) -> Result<Self> {
+    //     let config: Self = serde_yaml::from_str(content)?;
+    //     config.validate()?;
+    //     Ok(config)
+    // }
 
     pub fn get_profile(&self, name: &str) -> Option<&DiffProfile> {
         self.profiles.get(name)
     }
 
-    pub fn validate(&self) -> Result<()> {
-        for (name, profile) in &self.profiles {
-            profile
-                .validate()
-                .context(format!("failed to validate profile: {}", name))?;
-        }
-        Ok(())
-    }
+    // pub fn validate(&self) -> Result<()> {
+    //     for (name, profile) in &self.profiles {
+    //         profile
+    //             .validate()
+    //             .context(format!("failed to validate profile: {}", name))?;
+    //     }
+    //     Ok(())
+    // }
 }
 
 impl DiffProfile {
@@ -87,7 +91,26 @@ impl DiffProfile {
         diff_text(&text1, &text2)
     }
 
-    pub fn validate(&self) -> Result<()> {
+    // pub fn validate(&self) -> Result<()> {
+    //     self.req1.validate().context("req1 failed to validate")?;
+    //     self.req2.validate().context("req2 failed to validate")?;
+    //     Ok(())
+    // }
+}
+
+impl ValidateConfig for DiffConfig {
+    fn validate(&self) -> Result<()> {
+        for (name, profile) in &self.profiles {
+            profile
+                .validate()
+                .context(format!("failed to validate profile: {}", name))?;
+        }
+        Ok(())
+    }
+}
+
+impl ValidateConfig for DiffProfile {
+    fn validate(&self) -> Result<()> {
         self.req1.validate().context("req1 failed to validate")?;
         self.req2.validate().context("req2 failed to validate")?;
         Ok(())

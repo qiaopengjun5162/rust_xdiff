@@ -3,7 +3,8 @@ use clap::Parser;
 use dialoguer::{theme::ColorfulTheme, Input, MultiSelect};
 use rust_xdiff::{
     cli::{Action, Args, RunArgs},
-    highligh_text, DiffConfig, DiffProfile, ExtraArgs, RequestProfile, ResponseProfile,
+    highlight_text, DiffConfig, DiffProfile, ExtraArgs, LoadConfig, RequestProfile,
+    ResponseProfile,
 };
 use std::io::Write;
 
@@ -53,7 +54,7 @@ async fn parse() -> Result<()> {
 
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
-    write!(stdout, "----\n{}", highligh_text(&result, "yaml")?)?;
+    write!(stdout, "---\n{}", highlight_text(&result, "yaml", None)?)?;
     Ok(())
 }
 

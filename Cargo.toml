@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.72"
+async-trait = "0.1.73"
 clap = { version = "4.3.19", features = ["derive"] }
 console = "0.15.7"
 dialoguer = "0.10.4"
@@ -14,9 +15,18 @@ http-serde = "1.1.2"
 reqwest = { version = "0.11.18", default-features = false, features = ["rustls-tls"] }
 serde = { version = "1.0.182", features = ["derive"] }
 serde_json = "1.0.104"
+serde_qs = "0.12.0"
 serde_urlencoded = "0.7.1"
 serde_yaml = "0.9.25"
 similar = { version = "2.2.1", features = ["inline", "unicode", "bytes"] }
 syntect = "5.1.0"
 tokio = { version = "1.29.1", features = ["full"] }
 url = { version = "2.4.0", features = ["serde"] }
+
+[[bin]]
+name = "rust_xdiff"
+path = "src/bin/xdiff.rs"
+
+[[bin]]
+name = "xreq-live"
+path = "src/bin/xreq.rs"
