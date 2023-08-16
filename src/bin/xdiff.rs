@@ -3,25 +3,20 @@ use clap::Parser;
 use dialoguer::{theme::ColorfulTheme, Input, MultiSelect};
 use rust_xdiff::{
     cli::{Action, Args, RunArgs},
-    highlight_text, DiffConfig, DiffProfile, ExtraArgs, LoadConfig, RequestProfile,
-    ResponseProfile,
+    highlight_text, process_error_output, DiffConfig, DiffProfile, ExtraArgs, LoadConfig,
+    RequestProfile, ResponseProfile,
 };
 use std::io::Write;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
-    // Args { action: Run(RunArgs { profile: "rust",
-    // extra_params: [KeyVal { key_type: Query, key: "a", value: "100" }],
-    // config: Some("fixtures/test.yml") }) }
-
-    match args.action {
-        Action::Run(args) => run(args).await?,
-        Action::Parse => parse().await?,
+    let result = match args.action {
+        Action::Run(args) => run(args).await,
+        Action::Parse => parse().await,
         _ => panic!("Not implemented"),
-    }
-
-    Ok(())
+    };
+    process_error_output(result)
 }
 
 async fn parse() -> Result<()> {
@@ -54,7 +49,12 @@ async fn parse() -> Result<()> {
 
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
-    write!(stdout, "---\n{}", highlight_text(&result, "yaml", None)?)?;
+    if atty::is(atty::Stream::Stdout) {
+        write!(stdout, "---\n{}", highlight_text(&result, "yaml", None)?)?;
+    } else {
+        write!(stdout, "{}", result)?;
+    }
+
     Ok(())
 }
 

@@ -8,7 +8,7 @@ pub use config::{
     RequestConfig, RequestProfile, ResponseProfile,
 };
 // pub use req::RequestProfile;
-pub use utils::{diff_text, highlight_text};
+pub use utils::{diff_text, highlight_text, process_error_output};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct ExtraArgs {
