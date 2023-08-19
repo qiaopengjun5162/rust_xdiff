@@ -18,7 +18,6 @@ pub use xdiff::{DiffConfig, DiffProfile, ResponseProfile};
 pub use xreq::RequestConfig;
 
 use crate::ExtraArgs;
-// use crate::{ExtraArgs, ResponseProfile};
 
 #[async_trait]
 pub trait LoadConfig
@@ -111,8 +110,6 @@ impl RequestProfile {
     }
 
     pub async fn send(&self, args: &ExtraArgs) -> Result<ResponseExt> {
-        // let mut req = Client::new().request(self.method.clone(), self.url.clone());
-
         let (headers, query, body) = self.generate(args)?;
         let client = Client::new();
 
@@ -139,30 +136,6 @@ impl RequestProfile {
         Ok(url.to_string())
     }
 
-    // pub(crate) fn validate(&self) -> Result<()> {
-    //     if let Some(params) = self.params.as_ref() {
-    //         if !params.is_object() {
-    //             // return Err(anyhow::anyhow!("params {:?} must be an object", params));
-    //             return Err(anyhow::anyhow!(
-    //                 // "loading config error: params must be an object.\n{}",
-    //                 "Params must be an object but got\n{}",
-    //                 serde_yaml::to_string(params)?
-    //             ));
-    //         }
-    //     }
-
-    //     if let Some(body) = self.body.as_ref() {
-    //         if !body.is_object() {
-    //             return Err(anyhow::anyhow!(
-    //                 "Body must be an object but got\n{}",
-    //                 serde_yaml::to_string(body)?
-    //             ));
-    //         }
-    //     }
-
-    //     Ok(())
-    // }
-
     fn generate(&self, args: &ExtraArgs) -> Result<(HeaderMap, serde_json::Value, String)> {
         let mut headers = self.headers.clone();
         let mut query = self.params.clone().unwrap_or_else(|| json!({}));
@@ -187,11 +160,6 @@ impl RequestProfile {
             body[k] = v.parse()?;
         }
 
-        // let content_type = headers
-        //     .get(header::CONTENT_TYPE)
-        //     .map(|v| v.to_str().unwrap().split(';').next())
-        //     .flatten();
-
         let content_type = get_content_type(&headers);
         match content_type.as_deref() {
             Some("application/json") => {
@@ -211,9 +179,7 @@ impl ValidateConfig for RequestProfile {
     fn validate(&self) -> Result<()> {
         if let Some(params) = self.params.as_ref() {
             if !params.is_object() {
-                // return Err(anyhow::anyhow!("params {:?} must be an object", params));
                 return Err(anyhow::anyhow!(
-                    // "loading config error: params must be an object.\n{}",
                     "Params must be an object but got\n{}",
                     serde_yaml::to_string(params)?
                 ));
@@ -247,30 +213,11 @@ impl ResponseExt {
             "{}",
             get_header_text(&res, &profile.skip_headers)?
         )?;
-        // let mut output = get_header_text(&res, &profile.skip_headers)?;
-
-        // // let content_type = get_content_type(&res.headers());
-        // let content_type = get_content_type(res.headers());
-        // // let text = self.0.text().await?;
-        // let text = res.text().await?;
-
-        // match content_type.as_deref() {
-        //     Some("application/json") => {
-        //         let text = filter_json(&text, &profile.skip_body)?;
-        //         output.push_str(&text);
-        //     }
-        //     _ => {
-        //         output.push_str(&text);
-        //         // writeln!(&mut output, "{}", text)?;
-        //     }
-        // }
-
         write!(
             &mut output,
             "{}",
             get_body_text(res, &profile.skip_body).await?
         )?;
-
         Ok(output)
     }
 
@@ -286,9 +233,7 @@ impl ResponseExt {
 
 pub async fn get_body_text(res: Response, skip_body: &[String]) -> Result<String> {
     let content_type = get_content_type(res.headers());
-    // let text = self.0.text().await?;
     let text = res.text().await?;
-
     match content_type.as_deref() {
         Some("application/json") => filter_json(&text, skip_body),
 
@@ -302,8 +247,6 @@ pub fn get_status_text(res: &Response) -> Result<String> {
 
 pub fn get_header_text(res: &Response, skip_headers: &[String]) -> Result<String> {
     let mut output = String::new();
-    // writeln!(&mut output, "{:?} {}", res.version(), res.status())?;
-
     let headers = res.headers();
     for (k, v) in headers.iter() {
         if !skip_headers.iter().any(|sh| sh == k.as_str()) {
@@ -346,3 +289,194 @@ fn get_content_type(headers: &HeaderMap) -> Option<String> {
         // .map(|v| v.to_string())
         .and_then(|v| v.to_str().unwrap().split(';').next().map(|v| v.to_string()))
 }
+
+#[cfg(test)]
+mod tests {
+    use mockito::{mock, Mock};
+    use reqwest::StatusCode;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn request_profile_send_should_work() {
+        let _m = mock_for_url("/todo?a=1&b=2", json!({"id": 1, "title": "todo"}));
+
+        let res = get_response("/todo?a=1&b=2", &Default::default())
+            .await
+            .into_inner();
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn request_profile_send_with_extra_args_should_work() {
+        let _m = mock_for_url("/todo?a=1&b=3", json!({"id": 1, "title": "todo"}));
+
+        let args = ExtraArgs::new_with_query(vec![("b".into(), "3".into())]);
+
+        let res = get_response("/todo?a=1&b=2", &args).await.into_inner();
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn get_status_text_should_work() {
+        let _m = mock_for_url("/todo", json!({"id": 1, "title": "todo"}));
+
+        let res = get_response("/todo", &Default::default())
+            .await
+            .into_inner();
+        assert_eq!(get_status_text(&res).unwrap(), "HTTP/1.1 200 OK\n");
+    }
+
+    #[tokio::test]
+    async fn get_header_text_should_work() {
+        let _m = mock_for_url("/todo", json!({"id": 1, "title": "todo"}));
+
+        let res = get_response("/todo", &Default::default())
+            .await
+            .into_inner();
+        assert_eq!(
+            get_header_text(&res, &["connection".into(), "content-length".into()]).unwrap(),
+            "content-type: \"application/json\"\n\n"
+        );
+    }
+
+    #[tokio::test]
+    async fn get_body_text_should_work() {
+        let _m = mock_for_url("/todo", json!({"id": 1, "title": "todo"}));
+
+        let res = get_response("/todo", &Default::default())
+            .await
+            .into_inner();
+        assert_eq!(
+            get_body_text(res, &["id".into()]).await.unwrap(),
+            "{\n  \"title\": \"todo\"\n}"
+        );
+    }
+
+    #[test]
+    fn request_profile_validate_should_work() {
+        let profile = get_profile("/todo?a=1&b=2");
+        assert!(profile.validate().is_ok());
+    }
+
+    #[test]
+    fn request_profile_with_bad_param_validate_should_fail() {
+        let profile = RequestProfile::new(
+            Method::GET,
+            Url::parse("http://localhost:8080/todo").unwrap(),
+            Some(json!([1, 2, 3])),
+            HeaderMap::new(),
+            None,
+        );
+        let result = profile.validate();
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "Params must be an object but got\n- 1\n- 2\n- 3\n"
+        );
+    }
+
+    #[tokio::test]
+    async fn response_ext_get_text_should_work() {
+        let _m = mock_for_url("/todo", json!({"id": 1, "title": "todo"}));
+        let res = get_response("/todo", &Default::default()).await;
+        let response_profile = ResponseProfile::new(
+            vec![
+                "connection".into(),
+                "content-length".into(),
+                "content-type".into(),
+            ],
+            vec!["title".into()],
+        );
+        assert_eq!(
+            res.get_text(&response_profile).await.unwrap(),
+            "HTTP/1.1 200 OK\n\n{\n  \"id\": 1\n}"
+        )
+    }
+
+    #[tokio::test]
+    async fn response_ext_get_header_keys_should_work() {
+        let _m = mock_for_url("/todo", json!({"id": 1, "title": "todo"}));
+        let res = get_response("/todo", &Default::default()).await;
+        let mut sorted_header_keys = res.get_header_keys();
+        sorted_header_keys.sort();
+        let mut expected_header_keys = vec!["content-length", "content-type", "connection"];
+        expected_header_keys.sort();
+        assert_eq!(sorted_header_keys, expected_header_keys);
+        assert_eq!(
+            res.get_header_keys(),
+            vec![
+                "connection".to_string(),
+                "content-type".to_string(),
+                "content-length".to_string(),
+            ]
+        )
+    }
+
+    #[test]
+    fn request_profile_get_url_should_work() {
+        let profile = get_profile("/todo?a=1&b=2");
+        assert_eq!(
+            profile.get_url(&Default::default()).unwrap(),
+            get_url("/todo?a=1&b=2") // format!("{}/todo?a=1&b=2", mockito::server_url())
+        )
+    }
+
+    #[test]
+    fn request_profile_get_url_with_args_should_work() {
+        let profile = get_profile("/todo?a=1&b=2");
+        let args = ExtraArgs::new_with_query(vec![("c".into(), "3".into())]);
+        assert_eq!(
+            profile.get_url(&args).unwrap(),
+            get_url("/todo?a=1&b=2&c=3") // format!("{}/todo?a=1&b=2&c=3", mockito::server_url())
+        )
+    }
+
+    #[test]
+    fn test_get_content_type() {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("application/json; charset=utf-8"),
+        );
+        assert_eq!(
+            get_content_type(&headers),
+            Some("application/json".to_string())
+        );
+    }
+
+    fn mock_for_url(path_and_query: &str, resp_body: serde_json::Value) -> Mock {
+        mock("GET", path_and_query)
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(serde_json::to_string(&resp_body).unwrap())
+            .create()
+    }
+
+    fn get_url(path: &str) -> String {
+        format!("{}{}", mockito::server_url(), path)
+    }
+
+    fn get_profile(path_and_query: &str) -> RequestProfile {
+        let url = get_url(path_and_query);
+
+        RequestProfile::from_str(&url).unwrap()
+    }
+
+    async fn get_response(path_and_query: &str, args: &ExtraArgs) -> ResponseExt {
+        // let url = format!("{}{}", mockito::server_url(), path);
+        // let profile = RequestProfile::new(
+        //     Method::GET,
+        //     Url::parse(&url).unwrap(),
+        //     params,
+        //     HeaderMap::new(),
+        //     None,
+        // );
+
+        let profile = get_profile(path_and_query);
+        profile.send(args).await.unwrap()
+    }
+}
+
+// https://nexte.st/index.html
+// https://docs.rs/mockito/latest/mockito/

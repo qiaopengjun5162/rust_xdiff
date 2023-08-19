@@ -31,3 +31,6 @@ path = "src/bin/xdiff.rs"
 [[bin]]
 name = "xreq-live"
 path = "src/bin/xreq.rs"
+
+[dev-dependencies]
+mockito = "0.31.1"
