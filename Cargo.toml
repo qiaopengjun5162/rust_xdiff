@@ -34,3 +34,4 @@ path = "src/bin/xreq.rs"
 
 [dev-dependencies]
 mockito = "0.31.1"
+trycmd = "0.14.16"

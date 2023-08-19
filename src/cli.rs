@@ -98,3 +98,116 @@ impl From<Vec<KeyVal>> for ExtraArgs {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_vec_key_val_for_extra_args_should_work() {
+        let args = vec![
+            KeyVal {
+                key_type: KeyValType::Header,
+                key: "key1".to_string(),
+                value: "value1".to_string(),
+            }
+            .into(),
+            KeyVal {
+                key_type: KeyValType::Query,
+                key: "key2".to_string(),
+                value: "value2".to_string(),
+            }
+            .into(),
+            KeyVal {
+                key_type: KeyValType::Body,
+                key: "key3".to_string(),
+                value: "value3".to_string(),
+            }
+            .into(),
+        ];
+
+        let extra_args = ExtraArgs::from(args);
+
+        assert_eq!(extra_args.headers.len(), 1);
+        assert_eq!(extra_args.query.len(), 1);
+        assert_eq!(extra_args.body.len(), 1);
+
+        assert_eq!(extra_args.headers[0].0, "key1");
+        assert_eq!(extra_args.headers[0].1, "value1");
+
+        assert_eq!(extra_args.query[0].0, "key2");
+        assert_eq!(extra_args.query[0].1, "value2");
+
+        assert_eq!(extra_args.body[0].0, "key3");
+        assert_eq!(extra_args.body[0].1, "value3");
+    }
+
+    #[test]
+    fn from_vec_key_val_for_extra_args_should_work2() {
+        let args = vec![
+            KeyVal {
+                key_type: KeyValType::Header,
+                key: "key1".to_string(),
+                value: "value1".to_string(),
+            },
+            KeyVal {
+                key_type: KeyValType::Query,
+                key: "key2".to_string(),
+                value: "value2".to_string(),
+            },
+            KeyVal {
+                key_type: KeyValType::Body,
+                key: "key3".to_string(),
+                value: "value3".to_string(),
+            },
+        ];
+
+        let extra_args = ExtraArgs::from(args);
+
+        assert_eq!(
+            extra_args,
+            ExtraArgs {
+                headers: vec![("key1".to_string(), "value1".to_string())],
+                query: vec![("key2".to_string(), "value2".to_string())],
+                body: vec![("key3".to_string(), "value3".to_string())],
+            }
+        );
+    }
+
+    #[test]
+    fn parse_key_val_should_work() {
+        let args = vec!["%key1=value1", "key2=value2", "@key3=value3", "key4=value4"];
+
+        let key_vals = args
+            .into_iter()
+            .map(|arg| parse_key_val(arg))
+            .collect::<Result<Vec<_>>>()
+            .unwrap();
+
+        assert_eq!(
+            key_vals,
+            vec![
+                KeyVal {
+                    key_type: KeyValType::Header,
+                    key: "key1".to_string(),
+                    value: "value1".to_string(),
+                },
+                KeyVal {
+                    key_type: KeyValType::Query,
+                    key: "key2".to_string(),
+                    value: "value2".to_string(),
+                },
+                KeyVal {
+                    key_type: KeyValType::Body,
+                    key: "key3".to_string(),
+                    value: "value3".to_string(),
+                },
+                KeyVal {
+                    key_type: KeyValType::Query,
+                    key: "key4".to_string(),
+                    value: "value4".to_string(),
+                }
+            ]
+        )
+    }
+}
